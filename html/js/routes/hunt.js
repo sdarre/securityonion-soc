@@ -120,6 +120,48 @@ const huntComponent = {
     escalateRelatedEventsEnabled: false,
     aggregationActionsEnabled: false,
     actions: [],
+    // Pinned alerts in the form of name, soc_id, and a copy of alert data
+    pinnedAlerts: [],
+    // DSS data for pinned alerts
+    pinnedAlertsData: {},
+    pinnedExpanded: [],
+    // Whenever an alert is pinned, this template is used to create the object for storage
+    dssModel: {
+      relevanceIndicators: [
+        { name: "Signature specificity", content: "", url: "", checked: false },
+        { name: "Signature age", content: "", url: "", checked: false },
+        { name: "Customer scope", content: "", url: "", checked: false },
+      ],
+      additionalAlerts: [
+        { name: "Alert history", content: "", url: "", checked: false },
+        { name: "Surrounding alerts", content: "", url: "", checked: false },
+      ],
+      contextualInformation: [
+        { name: "Related logs", content: "", url: "", checked: false },
+        { name: "Traffic stream information", content: "", url: "", checked: false },
+        { name: "Target host information", content: "", url: "", checked: false },
+        { name: "Target host behaviour", content: "", url: "", checked: false },
+      ],
+      attackEvidence: [
+        { name: "Attack/Exploit information", content: "", url: "", checked: false },
+        { name: "Attacker information", content: "", url: "", checked: false },
+        { name: "Attack success indicators", content: "", url: "", checked: false },
+        { name: "Relation to use cases", content: "", url: "", checked: false },
+      ],
+      notes: "",
+    },
+    dssSteps: {
+      relevanceIndicators: "Relevance indicators",
+      additionalAlerts: "Additional alerts",
+      contextualInformation: "Contextual information",
+      attackEvidence: "Attack evidence"
+    },
+    sendToDssDialog: false,
+    sendToDssId: null,
+    sendToDssData: null,
+    showAnchor: false,
+    showAnchorDown: false,
+    returnPosition: null,    
   }},
   created() {
     this.$root.initializeCharts();
@@ -154,11 +196,13 @@ const huntComponent = {
   beforeDestroy() {
     this.$root.setSubtitle("");
     this.stopRefreshTimer();
+    window.removeEventListener('scroll', this.handleScroll);
   },
   mounted() {
     this.$root.startLoading();
     this.category = this.$route.path.replace("/", "");
     this.$root.loadParameters(this.category, this.initHunt);
+    window.addEventListener('scroll', this.handleScroll);
   },
   watch: {
     '$route': 'loadData',
@@ -211,6 +255,13 @@ const huntComponent = {
       this.chartLabelMaxLength = params["chartLabelMaxLength"]
       this.chartLabelOtherLimit = params["chartLabelOtherLimit"]
       this.chartLabelFieldSeparator = params["chartLabelFieldSeparator"]
+      if (localStorage.getItem("pinnedAlerts")) {
+        this.pinnedAlerts = JSON.parse(localStorage.getItem("pinnedAlerts"));
+        this.pinnedAlertsData = JSON.parse(localStorage.getItem("pinnedAlertsData"));
+        if (localStorage.getItem("dssNotes")) {
+          this.dssNotes = JSON.parse(localStorage.getItem("dssNotes"));
+        }
+      }
       if (this.queries != null && this.queries.length > 0) {
         this.query = this.queries[0].query;
       }
@@ -1613,6 +1664,144 @@ const huntComponent = {
     },
     isExpandedSection(item) {
       return (this.collapsedSections.indexOf(item) == -1);
+    },
+    
+    // Pin alert to DSS
+    pin(item) {
+      var key = item["soc_id"];
+      if (!this.pinnedAlerts.some(o => o["soc_id"] == key)) {
+        this.pinnedAlerts.push({
+          "soc_id": key,
+          "name": item["rule.name"],
+          "soc_data": structuredClone(item)
+        });
+        var alert = structuredClone(this.dssModel);
+        var hourSpan = moment(item["soc_timestamp"]).subtract(30, 'minutes').tz(this.zone).format(this.i18n.timePickerFormat) + " - " + moment(item["soc_timestamp"]).add(30, 'minutes').tz(this.zone).format(this.i18n.timePickerFormat);
+        
+        // Create default queries
+        alert["relevanceIndicators"][0].content = "rule.rule: " + item["rule.rule"];
+        alert["relevanceIndicators"][1].content = "rule.metadata.created_at: " + item["rule.metadata.created_at"] + "\nrule.metadata.updated_at: " + item["rule.metadata.updated_at"];
+        alert["additionalAlerts"][0].url = "/#/hunt?q=\"" + item["rule.name"] + "\" | groupby source.ip destination.ip&t=" + moment().subtract(7, 'days').startOf('day').format(this.i18n.timePickerFormat) + " - " + moment().tz(this.zone).format(this.i18n.timePickerFormat);
+        alert["additionalAlerts"][0].content = "Query generated for instances of alert within past week.";
+        alert["additionalAlerts"][1].url = "/#/hunt?q=\"" + item["source.ip"] + "\" OR \"" + item["destination.ip"] + "\" AND event.module:\"suricata\" | groupby rule.name source.ip destination.ip&t=" + hourSpan;
+        alert["additionalAlerts"][1].content = "Query generated for surrounding alerts.";
+        alert["contextualInformation"][0].url = "/#/hunt?q=\"" + item["source.ip"] + "\" OR \"" + item["destination.ip"] + "\" | groupby event.module event.dataset&t=" + hourSpan;
+        alert["contextualInformation"][0].content = "Query generated for related logs.";
+        alert["contextualInformation"][1].url = "/#/hunt?q=\"" + item["log.id.uid"] + "\" OR \"" + item["network.community_id"] + "\" | groupby event.module event.dataset&t=" + hourSpan;
+        alert["contextualInformation"][1].content = "Query generated for traffic stream information.";
+        alert["contextualInformation"][3].url = "/#/hunt?q=\"" + item["destination.ip"] + "\" | groupby event.module event.dataset&t=" + hourSpan;
+        alert["contextualInformation"][3].content = "Query generated for target host behavior.";
+
+        this.$set(this.pinnedAlertsData, key, alert);
+        localStorage.setItem("pinnedAlerts", JSON.stringify(this.pinnedAlerts));
+        localStorage.setItem("pinnedAlertsData", JSON.stringify(this.pinnedAlertsData));
+      }
+    },
+
+    // Unpin alert from DSS
+    unpin(item) {
+      var key = item["soc_id"];
+      for (var i = 0; i < this.pinnedAlerts.length; i++) {
+        if (this.pinnedAlerts[i]["soc_id"] == key) {
+          this.pinnedAlerts.splice(i, 1);
+          delete this.pinnedAlertsData[key];
+          if (this.pinnedIsExpanded(item)) this.pinnedExpanded = [];
+          localStorage.setItem("pinnedAlerts", JSON.stringify(this.pinnedAlerts));
+          localStorage.setItem("pinnedAlertsData", JSON.stringify(this.pinnedAlertsData));
+          break;
+        }        
+      }
+    },
+
+    // Handle expanding of pinned alert
+    pinnedExpand(item) {
+      if (this.pinnedIsExpanded(item)) {
+        this.pinnedExpanded = [];
+      } else {
+        this.pinnedExpanded = [item];
+      }
+    },
+    pinnedIsExpanded(item) {
+      return (this.pinnedExpanded.length > 0 && this.pinnedExpanded[0] == item);
+    },
+
+    // Handle manual edits to data fields
+    editDss(input, id, step, index) {
+      if (index != -1) {
+        if (this.pinnedAlertsData[id][step][index].content != input) {
+          this.$set(this.pinnedAlertsData[id][step][index], "content", input);
+          localStorage.setItem("pinnedAlertsData", JSON.stringify(this.pinnedAlertsData));
+        }
+      }
+      else if (this.pinnedAlertsData[id].notes != input) {
+        this.$set(this.pinnedAlertsData[id], "notes", input);
+        localStorage.setItem("pinnedAlertsData", JSON.stringify(this.pinnedAlertsData));
+      }
+    },
+
+    showSendToDss(item, data) {
+      this.sendToDssDialog = true;
+      this.sendToDssId = item["soc_id"];
+      this.sendToDssData = data;
+    },
+
+    // Send data to DSS via context menu
+    sendToDss(step, index) {
+      var dataCopy = JSON.parse(JSON.stringify(this.pinnedAlertsData));
+      // Append newline if there is already content in the receiving field
+      if ((index != -1 && dataCopy[this.sendToDssId][step][index].content) || (index == -1 && dataCopy[this.sendToDssId].notes)) {
+        this.sendToDssData = "\n" + this.sendToDssData;
+      }
+      if (index != -1) { // 
+        dataCopy[this.sendToDssId][step][index].content += this.sendToDssData;
+      }
+      else {
+        dataCopy[this.sendToDssId].notes += this.sendToDssData;
+      }
+      this.pinnedAlertsData = dataCopy;
+      localStorage.setItem("pinnedAlertsData", JSON.stringify(dataCopy));
+      this.sendToDssDialog = false;
+      this.sendToDssId = null;
+      this.sendToDssData = null;
+    },
+    showSendToDss(item, data) {
+      this.sendToDssDialog = true;
+      this.sendToDssId = item["soc_id"];
+      this.sendToDssData = data;
+    },
+
+    // Saves checkbox data to localStorage
+    checkStepDss() {
+      localStorage.setItem("pinnedAlertsData", JSON.stringify(this.pinnedAlertsData));
+    },
+
+    // Check if all substeps in a step have been checked, for traffic lights
+    isStepComplete(item, step) {
+      return !this.pinnedAlertsData[item["soc_id"]][step].some(o => !o.checked);
+    },
+
+    // Handles anchor functionality
+    handleScroll() {
+      // Show anchor if scrolled past DSS
+      if (document.documentElement.scrollTop > document.getElementById("dss").offsetTop + document.getElementById("dss").offsetHeight) {
+        this.showAnchor = true;
+        this.returnPosition = null;
+      }
+      else if (document.documentElement.scrollTop > document.getElementById("dss").offsetTop) {
+        this.showAnchor = false;
+      }
+      this.showAnchorDown = this.returnPosition ? true : false;
+    },
+    scrollToDss() {
+      this.returnPosition = document.documentElement.scrollTop;
+      document.documentElement.scrollTop = document.getElementById("dss").offsetTop;
+      this.showAnchorDown = true;
+    },
+    scrollBackDown() {
+      document.documentElement.scrollTop = this.returnPosition;
+      this.returnPosition = null;
+      this.showAnchorDown = false;
+      this.showAnchor = true;
     }
   }
 };

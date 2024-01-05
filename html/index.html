@@ -469,6 +469,135 @@
             </div>
           </v-expand-transition>
         </v-col>
+
+        <div id="dss" class="mx-3 mt-5 px-1 pb-1">
+          <v-col class="pt-1" v-if="loaded && eventsEnabled">
+            <v-toolbar dense flat @click="toggleShowSection('dss')">
+              <v-toolbar-title>Decision Support System</v-toolbar-title>
+              <v-spacer />
+              <v-btn plain icon small class="mr-1">
+                <v-icon v-if="!isExpandedSection('dss')">fa-angle-down</v-icon>
+                <v-icon v-if="isExpandedSection('dss')">fa-angle-up</v-icon>
+              </v-btn>
+            </v-toolbar>
+            <v-expand-transition>
+              <v-row v-if="isExpandedSection('dss')">
+                <v-col cols="12">
+                  <v-data-table class="dss-table" :items="pinnedAlerts" :expanded.sync="pinnedExpanded" item-key="soc_id" show-expand hide-default-header hide-default-footer>                    
+                    <template v-slot:item="{ item, index }">
+                      <tr>
+                        <td>
+                          <v-btn icon small @click="pinnedExpand(item)">
+                            <v-icon v-if="pinnedIsExpanded(item)">fa-angle-down</v-icon>
+                            <v-icon v-if="!pinnedIsExpanded(item)">fa-angle-right</v-icon>
+                          </v-btn> 
+                          <span class="dss-alert-title pr-2" style="font-size: 1.25em;" v-text="item['name']"/>
+                          <span class="traffic-lights pr-1" v-for="step in Object.keys(dssSteps)">
+                            <v-icon :title="dssSteps[step] + ': ' + pinnedAlertsData[item['soc_id']][step].filter(s => s['checked']).length + '/' + Object.keys(pinnedAlertsData[item['soc_id']][step]).length  + ' complete'" :color="isStepComplete(item, step) ? '#20BF50' : '#E58824'">fa-circle</v-icon>
+                          </span>
+                          <v-btn class="mx-2 mt-1 float-right" icon x-small
+                            @click="unpin(item)">
+                            <v-icon>fa-times</v-icon>
+                          </v-btn>
+                          <v-btn id="escalateButton" v-if="escalateEnabled" class="mx-2 mt-1 float-right" icon x-small
+                            @click="toggleEscalationMenu($event, item['soc_data'], -1); unpin(item)"
+                            :color="isFilterToggleEnabled('escalated') || item['soc_data']['event.escalated'] == true ? 'secondary' : 'primary'">
+                            <v-icon :title="isFilterToggleEnabled('escalated') || item['soc_data']['event.escalated'] == true ? i18n.alertEscalated : i18n.escalate">fa-exclamation-triangle</v-icon>
+                          </v-btn>
+                          <v-btn id="alertButton" v-if="ackEnabled && item['soc_data']['event.severity_label']" class="mx-2 mt-1 float-right" icon x-small
+                            @click="ack($event, item['soc_data'], index, !isFilterToggleEnabled('acknowledged'), false, null, -1); unpin(item)"
+                            :color="item['soc_data']['event.severity_label'] + '_' + isFilterToggleEnabled('acknowledged') | colorSeverity">
+                            <v-icon :title="isFilterToggleEnabled('acknowledged') ? i18n.alertUndoAcknowledge : i18n.alertAcknowledge">fa-bell</v-icon>
+                          </v-btn>
+                        </td>
+                      </tr>
+                    </template>
+                    <template v-slot:expanded-item="{ headers, item }">
+                      <div class="dss-tabs">
+                        <v-tabs color="white" dark slider-color="#2196f3">
+                          <v-tab class="dss-tab" v-for="step in Object.keys(dssSteps)" :key="step">
+                            <span v-text="dssSteps[step]"/>
+                          </v-tab>
+                          <v-tab-item v-for="step in Object.keys(dssSteps)" :key="step">
+                            <v-card flat>
+                              <v-data-table :items="pinnedAlertsData[item['soc_id']][step]" hide-default-header hide-default-footer>
+                                <template v-slot:item="{ item: dataTableItem, index }">
+                                  <tr class="dss-data">
+                                    <td>
+                                      <v-checkbox v-model="dataTableItem.checked" class="dss-checkbox py-0 my-0" @change="checkStepDss()" dense/>
+                                    </td>
+                                    <td class="pl-0">
+                                      <a v-if="dataTableItem.url" :href="dataTableItem.url" target="_blank">
+                                        <v-icon>fa-external-link</v-icon>
+                                      </a>
+                                    </td>
+                                    <td class="pa-0">
+                                      <span v-text="dataTableItem.name"/>
+                                    </td>
+                                    <td class="py-3 px-6" width="100%">
+                                      <div v-text="dataTableItem.content" class="dss-text-field hardwrap" contenteditable="true" spellcheck="false" @keydown.escape.prevent="$event.target.blur()" v-on:blur="editDss($event.target.innerText, item['soc_id'], step, index)" @click="console.log(this)"></div>
+                                    </td>
+                                  </tr>
+                                  <tr v-if="index == pinnedAlertsData[item['soc_id']][step].length - 1" class="dss-data">
+                                    <td>
+                                    </td>
+                                    <td class="pl-0">
+                                      <v-icon>fa-edit</v-icon>
+                                    </td>
+                                    <td class="pa-0">
+                                      <span v-text="'Your notes'"/>
+                                    </td>
+                                    <td class="py-3 px-6" width="100%">
+                                      <div v-text="pinnedAlertsData[item['soc_id']].notes" class="dss-text-field hardwrap" contenteditable="true" spellcheck="false" @keydown.escape.prevent="$event.target.blur()" v-on:blur="editDss($event.target.innerText, item['soc_id'], step, -1)"></div>
+                                    </td>
+                                  </tr>
+                                </template>
+                              </v-data-table>
+                            </v-card>
+                          </v-tab-item>
+                        </v-tabs>
+                      </div>
+                    </template>         
+                  </v-data-table>
+                </v-col>
+              </v-row>
+            </v-expand-transition>
+          </v-col>
+        </div>
+
+        <v-btn v-show="showAnchor" @click="scrollToDss" class="dss-anchor">
+          <v-icon class="pr-3">fa-chevron-up</v-icon>
+          Jump to DSS
+        </v-btn>
+
+        <v-btn v-show="showAnchorDown" @click="scrollBackDown" class="dss-anchor">
+          <v-icon class="pr-3">fa-chevron-down</v-icon>
+          Jump back down
+        </v-btn>
+
+        <v-dialog v-model="sendToDssDialog" max-width="260">
+          <v-card class="pb-2">
+            <v-list v-for="(step, index) in Object.keys(dssSteps)" class="pa-0 pt-3">
+              <v-list-subheader v-if="!index" class="pl-4" style="font-size: 20px;">
+                Send to...
+              </v-list-subheader>
+              <v-divider v-if="!index" class="mt-3"></v-divider>
+              <v-list-item v-if="!index" @click="sendToDss(step, -1)">
+                <v-icon class="pr-2 send-to-dss-icon">fa-arrow-right</v-icon>
+                Your notes
+              </v-list-item>
+              <v-divider class="pb-4"></v-divider>
+              <v-list-subheader class="pl-4">
+                {{ dssSteps[step] }}
+              </v-list-subheader>
+              <v-list-item v-for="(substep, index) in dssModel[step]" @click="sendToDss(step, index)" class="pl-6">
+                <v-icon class="pr-2 send-to-dss-icon">fa-arrow-right</v-icon>
+                {{ substep.name }}
+              </v-list-item>
+            </v-list>
+          </v-card>
+        </v-dialog>
+
         <v-col id="group-metrics" v-if="metricsEnabled">
           <v-toolbar v-if="isAdvanced()" dense flat>
             <v-toolbar-title>{{ i18n.groups }}</v-toolbar-title>
@@ -630,6 +759,10 @@
                           :color="isFilterToggleEnabled('escalated') || item['event.escalated'] == true ? 'secondary' : 'primary'">
                           <v-icon :title="isFilterToggleEnabled('escalated') || item['event.escalated'] == true ? i18n.alertEscalated : i18n.escalate">fa-exclamation-triangle</v-icon>
                         </v-btn>
+                        <v-btn class="mx-2" icon x-small
+                          @click="pin(item)">
+                          <v-icon>fa-thumb-tack</v-icon>
+                        </v-btn>
                         <router-link :to="{ name: 'case', params: {id: item.soc_id}}" style="text-decoration: none; cursor: 'pointer'" v-if="viewEnabled">
                           <v-icon class="mr-2" :title="i18n.view">fa-binoculars</v-icon>
                         </router-link>
@@ -726,6 +859,26 @@
                 {{ i18n.groupNew }}
               </v-list-item-title>
             </v-list-item>
+
+            <v-list-group v-if="pinnedAlerts.length" dense @click.stop color="white" value="0">
+              <template v-slot:activator>
+                <v-list-item-icon>
+                  <v-icon color="white">fa-thumb-tack</v-icon>
+                </v-list-item-icon>
+                <v-list-item-title class="white--text">
+                  Send to DSS
+                </v-list-item-title>
+              </template>
+              <v-list-item v-for="alert in pinnedAlerts" dense @click="showSendToDss(alert, quickActionField + ': ' + quickActionValue)" color="white">
+                <v-list-item-icon>
+                  <v-icon color="white">fa-arrow-right</v-icon>
+                </v-list-item-icon>
+                <v-list-item-title class="white--text">
+                  {{ alert.name }}
+                </v-list-item-title>
+              </v-list-item>
+            </v-list-group>
+
             <v-list-group dense @click.stop>
               <template v-slot:activator>
                 <v-list-item-icon>

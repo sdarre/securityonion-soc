@@ -417,3 +417,66 @@ td {
 .maximized-bg {
   overflow: hidden;
 }
+
+
+#dss {
+  border-radius: 15px;
+  background: #272727;
+  margin-top: 20px;
+  box-shadow: 0 2px 4px -1px rgba(0,0,0,.2),0 4px 5px 0 rgba(0,0,0,.14),0 1px 10px 0 rgba(0,0,0,.12);
+}
+
+.dss-tabs .v-tab {
+  text-transform: capitalize;
+}
+
+.dss-tabs>.v-tabs>.v-item-group {
+  border-bottom: thin solid hsla(0,0%,100%,.12);
+}
+
+.dss-alert-title {
+  vertical-align: bottom;
+}
+
+.dss-data .v-icon {
+  color: inherit;
+  vertical-align: baseline;
+  font-size: 1em !important;
+}
+
+.dss-checkbox {
+  height: 24px;
+  width: 24px;
+}
+
+.dss-text-field {
+  background: #272727;
+  border-radius: 3px;
+  margin-top: -5px;
+  margin-bottom: -5px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.send-to-dss-icon {
+  font-size: 1em !important;
+}
+
+.traffic-lights .v-icon {
+  padding-right: 0.25em;
+  font-size: 1em !important;
+}
+
+.dss-anchor {
+  position: fixed;
+  bottom: 50px;
+  right: 50px;
+  background-color: #2196F3 !important;
+  text-transform: none;
+}
+
+.dss-anchor .v-icon {
+  font-size: 1em !important;
+}

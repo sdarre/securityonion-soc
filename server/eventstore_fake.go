@@ -23,6 +23,7 @@ type FakeEventstore struct {
 	InputSearchCriterias []*model.EventSearchCriteria
 	InputUpdateCriterias []*model.EventUpdateCriteria
 	InputAckCriterias    []*model.EventAckCriteria
+	InputTaxCriterias    []*model.EventTaxCriteria
 	Err                  error
 	SearchResults        []*model.EventSearchResults
 	IndexResults         []*model.EventIndexResults
@@ -41,6 +42,7 @@ func NewFakeEventstore() *FakeEventstore {
 	store.InputSearchCriterias = make([]*model.EventSearchCriteria, 0)
 	store.InputUpdateCriterias = make([]*model.EventUpdateCriteria, 0)
 	store.InputAckCriterias = make([]*model.EventAckCriteria, 0)
+	store.InputTaxCriterias = make([]*model.EventTaxCriteria, 0)
 	store.SearchResults = make([]*model.EventSearchResults, 0, 0)
 	store.SearchResults = append(store.SearchResults, model.NewEventSearchResults())
 	store.IndexResults = make([]*model.EventIndexResults, 0, 0)
@@ -95,6 +97,17 @@ func (store *FakeEventstore) Delete(context context.Context, index string, id st
 func (store *FakeEventstore) Acknowledge(context context.Context, criteria *model.EventAckCriteria) (*model.EventUpdateResults, error) {
 	store.InputContexts = append(store.InputContexts, context)
 	store.InputAckCriterias = append(store.InputAckCriterias, criteria)
+	if store.updateCount >= len(store.UpdateResults) {
+		store.updateCount = len(store.UpdateResults) - 1
+	}
+	result := store.UpdateResults[store.updateCount]
+	store.updateCount += 1
+	return result, store.Err
+}
+
+func (store *FakeEventstore) Classify(context context.Context, criteria *model.EventTaxCriteria) (*model.EventUpdateResults, error) {
+	store.InputContexts = append(store.InputContexts, context)
+	store.InputTaxCriterias = append(store.InputTaxCriterias, criteria)
 	if store.updateCount >= len(store.UpdateResults) {
 		store.updateCount = len(store.UpdateResults) - 1
 	}

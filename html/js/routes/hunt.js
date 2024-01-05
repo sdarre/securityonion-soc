@@ -118,8 +118,34 @@ const huntComponent = {
     escalationItem: null,
     escalationGroupIdx: -1,
     escalateRelatedEventsEnabled: false,
+    alertMenuVisible: false,
+    alertMenuX: 0,
+    alertMenuY: 0,
+    alertItem: null,
+    alertGroupIdx: -1,
     aggregationActionsEnabled: false,
     actions: [],
+    taxonomy: {
+      status: "",
+      malicious: false,
+      maliceMotivation: "",
+      attackSuccessful: false,
+      successMotivation: "",
+      mitigationFactor: "",
+      severityLevel: "",
+      requestedAction: "",
+      additionalLabels: "",
+    },
+    taxonomyOptions: {
+      status: ["", "Open", "Escalated to tier 2", "Escalated to tier 3", "Finished investigation", "Reported", "Check for remediation", "Closed"],      // maliceMotivationTactic: ["", "Reconaissance", "Resource development", "Initial access", "Execution", "Persistence", "Privilege escalation", "Defense evasion", "Credential access", "Discovery", "Lateral movement", "Collection"],
+      maliceMotivation: ["", "T1001: Data Obfuscation", "T1003: OS Credential Dumping", "T1005: Data from Local System", "T1006: Direct Volume Access", "T1007: System Service Discovery", "T1008: Fallback Channels", "T1010: Application Window Discovery", "T1011: Exfiltration Over Other Network Medium", "T1012: Query Registry", "T1014: Rootkit", "T1016: System Network Configuration Discovery", "T1018: Remote System Discovery", "T1020: Automated Exfiltration", "T1021: Remote Services", "T1025: Data from Removable Media", "T1027: Obfuscated Files or Information", "T1029: Scheduled Transfer", "T1030: Data Transfer Size Limits", "T1033: System Owner/User Discovery", "T1036: Masquerading", "T1037: Boot or Logon Initialization Scripts", "T1039: Data from Network Shared Drive", "T1040: Network Sniffing", "T1041: Exfiltration Over C2 Channel", "T1046: Network Service Discovery", "T1047: Windows Management Instrumentation", "T1048: Exfiltration Over Alternative Protocol", "T1049: System Network Connections Discovery", "T1052: Exfiltration Over Physical Medium", "T1053: Scheduled Task/Job", "T1055: Process Injection", "T1056: Input Capture", "T1057: Process Discovery", "T1059: Command and Scripting Interpreter", "T1068: Exploitation for Privilege Escalation", "T1069: Permission Groups Discovery", "T1070: Indicator Removal", "T1071: Application Layer Protocol", "T1072: Software Deployment Tools", "T1074: Data Staged", "T1078: Valid Accounts", "T1080: Taint Shared Content", "T1082: System Information Discovery", "T1083: File and Directory Discovery", "T1087: Account Discovery", "T1090: Proxy", "T1091: Replication Through Removable Media", "T1092: Communication Through Removable Media", "T1095: Non-Application Layer Protocol", "T1098: Account Manipulation", "T1102: Web Service", "T1104: Multi-Stage Channels", "T1105: Ingress Tool Transfer", "T1106: Native API", "T1110: Brute Force", "T1111: Multi-Factor Authentication Interception", "T1112: Modify Registry", "T1113: Screen Capture", "T1114: Email Collection", "T1115: Clipboard Data", "T1119: Automated Collection", "T1120: Peripheral Device Discovery", "T1123: Audio Capture", "T1124: System Time Discovery", "T1125: Video Capture", "T1127: Trusted Developer Utilities Proxy Execution", "T1129: Shared Modules", "T1132: Data Encoding", "T1133: External Remote Services", "T1134: Access Token Manipulation", "T1135: Network Share Discovery", "T1136: Create Account", "T1137: Office Application Startup", "T1140: Deobfuscate/Decode Files or Information", "T1176: Browser Extensions", "T1185: Browser Session Hijacking", "T1187: Forced Authentication", "T1189: Drive-by Compromise", "T1190: Exploit Public-Facing Application", "T1195: Supply Chain Compromise", "T1197: BITS Jobs", "T1199: Trusted Relationship", "T1200: Hardware Additions", "T1201: Password Policy Discovery", "T1202: Indirect Command Execution", "T1203: Exploitation for Client Execution", "T1204: User Execution", "T1205: Traffic Signaling", "T1207: Rogue Domain Controller", "T1210: Exploitation of Remote Services", "T1211: Exploitation for Defense Evasion", "T1212: Exploitation for Credential Access", "T1213: Data from Information Repositories", "T1216: System Script Proxy Execution", "T1217: Browser Bookmark Discovery", "T1218: System Binary Proxy Execution", "T1219: Remote Access Software", "T1220: XSL Script Processing", "T1221: Template Injection", "T1222: File and Directory Permissions Modification", "T1480: Execution Guardrails", "T1482: Domain Trust Discovery", "T1484: Domain Policy Modification", "T1485: Data Destruction", "T1486: Data Encrypted for Impact", "T1489: Service Stop", "T1490: Inhibit System Recovery", "T1491: Defacement", "T1495: Firmware Corruption", "T1496: Resource Hijacking", "T1497: Virtualization/Sandbox Evasion", "T1498: Network Denial of Service", "T1499: Endpoint Denial of Service", "T1505: Server Software Component", "T1518: Software Discovery", "T1525: Implant Internal Image", "T1526: Cloud Service Discovery", "T1528: Steal Application Access Token", "T1529: System Shutdown/Reboot", "T1530: Data from Cloud Storage", "T1531: Account Access Removal", "T1534: Internal Spearphishing", "T1535: Unused/Unsupported Cloud Regions", "T1537: Transfer Data to Cloud Account", "T1538: Cloud Service Dashboard", "T1539: Steal Web Session Cookie", "T1542: Pre-OS Boot", "T1543: Create or Modify System Process", "T1546: Event Triggered Execution", "T1547: Boot or Logon Autostart Execution", "T1548: Abuse Elevation Control Mechanism", "T1550: Use Alternate Authentication Material", "T1552: Unsecured Credentials", "T1553: Subvert Trust Controls", "T1554: Compromise Client Software Binary", "T1555: Credentials from Password Stores", "T1556: Modify Authentication Process", "T1557: Adversary-in-the-Middle", "T1558: Steal or Forge Kerberos Tickets", "T1559: Inter-Process Communication", "T1560: Archive Collected Data", "T1561: Disk Wipe", "T1562: Impair Defenses", "T1563: Remote Service Session Hijacking", "T1564: Hide Artifacts", "T1565: Data Manipulation", "T1566: Phishing", "T1567: Exfiltration Over Web Service", "T1568: Dynamic Resolution", "T1569: System Services", "T1570: Lateral Tool Transfer", "T1571: Non-Standard Port", "T1572: Protocol Tunneling", "T1573: Encrypted Channel", "T1574: Hijack Execution Flow", "T1578: Modify Cloud Compute Infrastructure", "T1580: Cloud Infrastructure Discovery", "T1583: Acquire Infrastructure", "T1584: Compromise Infrastructure", "T1585: Establish Accounts", "T1586: Compromise Accounts", "T1587: Develop Capabilities", "T1588: Obtain Capabilities", "T1589: Gather Victim Identity Information", "T1590: Gather Victim Network Information", "T1591: Gather Victim Org Information", "T1592: Gather Victim Host Information", "T1593: Search Open Websites/Domains", "T1594: Search Victim-Owned Websites", "T1595: Active Scanning", "T1596: Search Open Technical Databases", "T1597: Search Closed Sources", "T1598: Phishing for Information", "T1599: Network Boundary Bridging", "T1600: Weaken Encryption", "T1601: Modify System Image", "T1602: Data from Configuration Repository", "T1606: Forge Web Credentials", "T1608: Stage Capabilities", "T1609: Container Administration Command", "T1610: Deploy Container", "T1611: Escape to Host", "T1612: Build Image on Host", "T1613: Container and Resource Discovery", "T1614: System Location Discovery", "T1615: Group Policy Discovery", "T1619: Cloud Storage Object Discovery", "T1620: Reflective Code Loading", "T1621: Multi-Factor Authentication Request Generation", "T1622: Debugger Evasion", "T1647: Plist File Modification", "T1648: Serverless Execution", "T1649: Steal or Forge Authentication Certificates"],
+      benignMotivation: ["", "Behavior does not match the signature", "Behavior matches the signature, but detected data is not malicious", "Behavior matches the signature, but it is compliant with companies policies"],
+      successMotivation: ["", "Data sent from the target host indicates success", "The affected host is no longer exhibiting its usual behavior", "The affected host is exhibiting new (unusual) behavior"],
+      unsuccessMotivation: ["", "Data sent from the target host (or lack thereof) indicates failure", "The affected host continues to exhibit its usual behavior", "The affected host does not exhibit any new (unusual) behavior", "The affected host is known not to be vulnerable to the attack technique"],
+      mitigationFactor: ["", "None", "Activity generated from trusted internal hosts", "EDR (Endpoint Detection and Response) blocked the threat", "IPS/Firewall blocked the threat", "Suspicious activity that is anyway permitted by corporate security policies"]  ,
+      severityLevel: ["", "No risk", "Severity 1: CIA aspects compromised for the whole organization / crown jewels", "Severity 2: CIA aspects compromised for a part of the organization", "Severity 3: Imminent risk impacting CIA aspects", "Severity 4: Potential risk requiring attention"],
+      requestedAction: ["", "Ignore", "Perform further investigation", "Isolate/quarantine affected service", "Isolate/quarantine affected device", "Isolate/quarantine affected network", "Eradicate malware", "Patch vulnerabilities", "Improve service security configuration settings", "Update corporate security policies"]
+    }
   }},
   created() {
     this.$root.initializeCharts();
@@ -813,9 +839,10 @@ const huntComponent = {
         return;
       }
 
-      if (!domEvent || this.quickActionVisible || this.escalationMenuVisible) {
+      if (!domEvent || this.quickActionVisible || this.escalationMenuVisible || this.alertMenuVisible) {
         this.quickActionVisible = false;
         this.escalationMenuVisible = false;
+        this.alertMenuVisible = false;
         return;
       }
       this.escalationMenuX = domEvent.clientX;
@@ -827,9 +854,10 @@ const huntComponent = {
       });
     },
     toggleQuickAction(domEvent, event, field, value) {
-      if (!domEvent || this.quickActionVisible || this.escalationMenuVisible) {
+      if (!domEvent || this.quickActionVisible || this.escalationMenuVisible || this.alertMenuVisible) {
         this.quickActionVisible = false;
         this.escalationMenuVisible = false;
+        this.alertMenuVisible = false;
         return;
       }
 
@@ -1613,6 +1641,106 @@ const huntComponent = {
     },
     isExpandedSection(item) {
       return (this.collapsedSections.indexOf(item) == -1);
+    },
+    toggleAlertMenu(domEvent, event, groupIdx) {
+      if (!domEvent || this.quickActionVisible || this.escalationMenuVisible || this.alertMenuVisible) {
+        this.quickActionVisible = false;
+        this.escalationMenuVisible = false;
+        this.alertMenuVisible = false;
+        return;
+      }
+      this.alertMenuX = domEvent.clientX;
+      this.alertMenuY = domEvent.clientY;
+      this.alertItem = event;
+      this.alertGroupIdx = groupIdx;
+      this.$nextTick(() => { 
+        this.alertMenuVisible = true; 
+      });      
+      this.loadTaxonomyOptions(event); 
+    },
+    async loadTaxonomyOptions(event) {
+      this.clearTaxonomyOptions();
+      if (event["count"]) {
+        var query = await this.getQuery();
+        Object.keys(event).forEach(prop => {
+          if (prop != "count") {
+            if (event[prop] == "*Missing") {
+              query = "-_exists_:" + prop + " AND " + query;
+            }
+            else {
+              query = prop + ":\"" + event[prop] + "\" AND " + query;
+            }
+          }
+        });
+        const response = await this.$root.papi.get('events/', { params: { 
+          query: query,
+          range: this.dateRange, 
+          format: this.i18n.timePickerSample, 
+          zone: this.zone, 
+          metricLimit: this.groupByLimit, 
+          eventLimit: this.eventLimit 
+        }});
+        for (var i = 0; i < response.data.events.length; i++) {
+          if (Object.keys(response.data.events[i].payload).some(x => x.includes("event.tax."))) {
+            event = response.data.events[i].payload;
+            break;
+          }
+        }
+      }
+      Object.keys(this.taxonomy).forEach(prop => {
+        this.taxonomy[prop] = event["event.tax." + prop.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)];
+      });
+    },      
+    async classify(item) {
+      this.alertMenuVisible = false;
+      var taxonomy = {};
+      Object.keys(this.taxonomy).forEach(prop => {
+        if (this.taxonomy[prop] && this.taxonomy[prop] != "*Missing") taxonomy["tax." + prop.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)] = this.taxonomy[prop];
+      });
+      if (this.taxonomy.status) taxonomy["tax.log_" + this.taxonomy.status.replace(/\ /g,"_").toLowerCase()] = new Date().toISOString();
+      try {
+        var docEvent = item;
+        if (item["soc_id"]) {
+          // Strip away everything else for optimization
+          docEvent = { "soc_id": item["soc_id"] };
+        }
+        else {
+          Object.keys(docEvent).forEach(prop => {if (docEvent[prop] == "*Missing") delete docEvent[prop]});
+        }
+        const response = await this.$root.papi.post('events/tax', {
+          searchFilter: await this.getQuery(),
+          eventFilter: docEvent,
+          dateRange: this.dateRange, 
+          dateRangeFormat: this.i18n.timePickerSample, 
+          timezone: this.zone, 
+          taxonomy: taxonomy,
+        });
+        if (response.data && response.data.errors && response.data.errors.length > 0) {
+          this.$root.showWarning('Some errors have not been classified.');
+        }
+        else {
+          this.loadData();
+        }
+      } catch (error) {
+        this.$root.showError(error);
+      }      
+    },
+    isMalicious() {
+      return this.taxonomy.malicious;
+    },
+    isAttackSuccessful() {
+      return this.taxonomy.attackSuccessful;
+    },
+    clearTaxonomyOptions() {
+      this.taxonomy.status = "";
+      this.taxonomy.malicious = false;
+      this.taxonomy.maliceMotivation = "";
+      this.taxonomy.attackSuccessful = false;
+      this.taxonomy.successMotivation = "";
+      this.taxonomy.mitigationFactor = "";
+      this.taxonomy.severityLevel = "";
+      this.taxonomy.requestedAction = "";
+      this.taxonomy.additionalLabels = "";
     }
   }
 };

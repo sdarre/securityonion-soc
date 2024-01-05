@@ -417,3 +417,15 @@ td {
 .maximized-bg {
   overflow: hidden;
 }
+
+#alert-menu {
+  padding: 15px;
+  width: 515px;
+}
+
+#alert-menu textarea {
+  color: #fff; 
+  border-bottom: solid 1px #c7c7c7;
+  background-color: #303030;
+  white-space: nowrap;
+}

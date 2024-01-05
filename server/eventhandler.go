@@ -41,6 +41,9 @@ func (eventHandler *EventHandler) HandleNow(ctx context.Context, writer http.Res
       if obj == "ack" {
         return eventHandler.ack(ctx, writer, request)
       }
+      if obj == "tax" {
+        return eventHandler.tax(ctx, writer, request)
+      }
     }
   }
   return http.StatusMethodNotAllowed, nil, errors.New("Method not supported")
@@ -79,6 +82,23 @@ func (eventHandler *EventHandler) ack(ctx context.Context, writer http.ResponseW
   err := json.NewDecoder(request.Body).Decode(&ackCriteria)
   if err == nil {
     results, err = eventHandler.server.Eventstore.Acknowledge(ctx, ackCriteria)
+    if err == nil {
+      statusCode = http.StatusOK
+    } else {
+      statusCode = http.StatusBadRequest
+    }
+  }
+  return statusCode, results, err
+}
+
+func (eventHandler *EventHandler) tax(ctx context.Context, writer http.ResponseWriter, request *http.Request) (int, interface{}, error) {
+  var results *model.EventUpdateResults
+  statusCode := http.StatusBadRequest
+
+  taxCriteria := model.NewEventTaxCriteria()
+  err := json.NewDecoder(request.Body).Decode(&taxCriteria)
+  if err == nil {
+    results, err = eventHandler.server.Eventstore.Classify(ctx, taxCriteria)
     if err == nil {
       statusCode = http.StatusOK
     } else {

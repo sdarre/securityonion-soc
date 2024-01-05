@@ -870,3 +870,87 @@ func (store *ElasticEventstore) Acknowledge(ctx context.Context, ackCriteria *mo
 	}
 	return results, err
 }
+
+func (store *ElasticEventstore) Classify(ctx context.Context, taxCriteria *model.EventTaxCriteria) (*model.EventUpdateResults, error) {
+	var results *model.EventUpdateResults
+	var err error
+	if len(taxCriteria.EventFilter) > 0 {
+		if err = store.server.CheckAuthorized(ctx, "tax", "events"); err == nil {
+			log.WithFields(log.Fields{
+				"searchFilter": taxCriteria.SearchFilter,
+				"eventFilter":  taxCriteria.EventFilter,
+				"taxonomy":     taxCriteria.Taxonomy,
+				"requestId":    ctx.Value(web.ContextKeyRequestId),
+			}).Info("Classifying event")
+
+			updateCriteria := model.NewEventUpdateCriteria()
+
+			updateCriteria.AddUpdateScript("ctx._source.event.remove('tax.status')");
+			updateCriteria.AddUpdateScript("ctx._source.event.remove('tax.malicious')");
+			updateCriteria.AddUpdateScript("ctx._source.event.remove('tax.malice_motivation')");
+			updateCriteria.AddUpdateScript("ctx._source.event.remove('tax.attack_successful')");
+			updateCriteria.AddUpdateScript("ctx._source.event.remove('tax.success_motivation')");
+			updateCriteria.AddUpdateScript("ctx._source.event.remove('tax.mitigation_factor')");
+			updateCriteria.AddUpdateScript("ctx._source.event.remove('tax.severity_level')");
+			updateCriteria.AddUpdateScript("ctx._source.event.remove('tax.requested_action')");
+			updateCriteria.AddUpdateScript("ctx._source.event.remove('tax.additional_labels')");
+
+			for key, value := range taxCriteria.Taxonomy {
+				if fmt.Sprintf("%T", value) == "string" {
+					updateCriteria.AddUpdateScript("ctx._source.event.put('" + strings.ToLower(key) + "', '" + fmt.Sprintf("%s", value) + "')")
+				} else {
+					updateCriteria.AddUpdateScript("ctx._source.event.put('" + strings.ToLower(key) + "', " + fmt.Sprintf("%v", value) + ")")
+				}
+			}
+
+			updateCriteria.Populate(taxCriteria.SearchFilter,
+				taxCriteria.DateRange,
+				taxCriteria.DateRangeFormat,
+				taxCriteria.Timezone,
+				"0",
+				"0")
+
+			// Add the event filters to the search query
+			var searchSegment *model.SearchSegment
+			segment := updateCriteria.ParsedQuery.NamedSegment("search")
+			if segment == nil {
+				searchSegment = model.NewSearchSegmentEmpty()
+			} else {
+				searchSegment = segment.(*model.SearchSegment)
+			}
+
+			updateCriteria.Asynchronous = false
+			for key, value := range taxCriteria.EventFilter {
+				if strings.ToLower(key) != "count" {
+					valueStr := fmt.Sprintf("%v", value)
+					searchSegment.AddFilter(store.mapElasticField(key), valueStr, model.IsScalar(value), true, false)
+				} else if int(value.(float64)) > store.asyncThreshold {
+					log.WithFields(log.Fields{
+						key:         value,
+						"threshold": store.asyncThreshold,
+						"requestId": ctx.Value(web.ContextKeyRequestId),
+					}).Info("Classifying events asynchronously due to large quantity")
+					updateCriteria.Asynchronous = true
+				}
+			}
+
+			// Baseline the query to be based only on the search component
+			updateCriteria.ParsedQuery = model.NewQuery()
+			updateCriteria.ParsedQuery.AddSegment(searchSegment)
+
+			results, err = store.Update(ctx, updateCriteria)
+			if err == nil && !updateCriteria.Asynchronous {
+				if results.UpdatedCount == 0 {
+					if results.UnchangedCount == 0 {
+						err = errors.New("No eligible events available to classify")
+					} else {
+						err = errors.New("All events have already been classified")
+					}
+				}
+			}
+		}
+	} else {
+		err = errors.New("EventFilter must be specified to classify an event")
+	}
+	return results, err
+}

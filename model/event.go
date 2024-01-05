@@ -191,3 +191,16 @@ func NewEventIndexResults() *EventIndexResults {
 	results := &EventIndexResults{}
 	return results
 }
+
+type EventTaxCriteria struct {
+	SearchFilter    string                 `json:"searchFilter"`
+	EventFilter     map[string]interface{} `json:"eventFilter"`
+	DateRange       string                 `json:"dateRange"`
+	DateRangeFormat string                 `json:"dateRangeFormat"`
+	Timezone        string                 `json:"timezone"`
+	Taxonomy		map[string]interface{} `json:"taxonomy"`
+}
+
+func NewEventTaxCriteria() *EventTaxCriteria {
+	return &EventTaxCriteria{}
+}

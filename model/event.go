@@ -176,10 +176,27 @@ type EventAckCriteria struct {
 	Timezone        string                 `json:"timezone"`
 	Escalate        bool                   `json:"escalate"`
 	Acknowledge     bool                   `json:"acknowledge"`
+	AckTime         string                 `json:"ackTime"`
+}
+
+type EventClaimCriteria struct {
+	SearchFilter    string                 `json:"searchFilter"`
+	EventFilter     map[string]interface{} `json:"eventFilter"`
+	DateRange       string                 `json:"dateRange"`
+	DateRangeFormat string                 `json:"dateRangeFormat"`
+	Timezone        string                 `json:"timezone"`
+	ClaimStatus     string                 `json:"claimStatus"`
+	ClaimUser       string                 `json:"claimUser"`
+	ClaimTime       string                 `json:"claimTime"`
+	ClaimTimeInv    string                 `json:"claimTimeInv"`
 }
 
 func NewEventAckCriteria() *EventAckCriteria {
 	return &EventAckCriteria{}
+}
+
+func NewEventClaimCriteria() *EventClaimCriteria {
+	return &EventClaimCriteria{}
 }
 
 type EventIndexResults struct {

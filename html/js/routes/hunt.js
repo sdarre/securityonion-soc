@@ -48,6 +48,8 @@ const huntComponent = {
     huntPending: false,
     ackEnabled: false,
     escalateEnabled: false,
+    claimEnabled: false,
+    cycling: false,
     viewEnabled: false,
     createLink: '',
     collapsedSections: [],
@@ -205,6 +207,8 @@ const huntComponent = {
       this.ackEnabled = params["ackEnabled"];
       this.escalateEnabled = params["escalateEnabled"];
       this.escalateRelatedEventsEnabled = params["escalateRelatedEventsEnabled"];
+      this.claimEnabled = params["claimEnabled"];
+      this.cycling = params["cycling"];
       this.aggregationActionsEnabled = params["aggregationActionsEnabled"];
       this.viewEnabled = params["viewEnabled"];
       this.createLink = params["createLink"];
@@ -320,6 +324,10 @@ const huntComponent = {
 
       for (var i = 0; i < this.filterToggles.length; i++) {
         filter = this.filterToggles[i];
+
+        if (filter.name == "claimedByOthers") {
+          filter.filter = "(_exists_:event.claim.status AND NOT event.claim.status:\"Unclaimed\" AND NOT event.claim.user:\"" + this.$root.username + "\")";
+        }
 
         if (q.length > 0) {
           q = q + " AND ";
@@ -504,6 +512,9 @@ const huntComponent = {
           // Strip away everything else for optimization
           docEvent = { "soc_id": item["soc_id"] };
         }
+        else {
+          Object.keys(docEvent).forEach(prop => {if (docEvent[prop] == "*Missing") delete docEvent[prop]});
+        }
         var isAlert = ('rule.name' in item || 'event.severity_label' in item);
         if (escalate) {
           if (!caseId || !this.escalateRelatedEventsEnabled) {
@@ -531,6 +542,7 @@ const huntComponent = {
             timezone: this.zone,
             escalate: escalate,
             acknowledge: acknowledge,
+            ackTime: acknowledge ? new Date().toISOString() : "",
           });
           if (response.data && response.data.errors && response.data.errors.length > 0) {
             this.$root.showWarning(this.i18n.ackPartialSuccess);
@@ -1613,6 +1625,67 @@ const huntComponent = {
     },
     isExpandedSection(item) {
       return (this.collapsedSections.indexOf(item) == -1);
+    },
+    async claim(item, reverse = false) {
+      try {
+        var docEvent = item;
+        if (item["soc_id"]) {
+          docEvent = { "soc_id": item["soc_id"] };
+        }
+        if (docEvent["event.claim.status"] == "*Missing") {
+          delete docEvent["event.claim.status"];
+        }
+        var claimStatus = "Unclaimed";
+        var claimUser = "";
+        var claimTime = "";
+        var claimTimeInv = "";
+        if (reverse) {
+          if (item["event.claim.status"] == "Investigating") {
+            claimStatus = "Claimed";
+            claimUser = this.$root.username;
+            claimTime = "UNCHANGED";
+            claimTimeInv = "";
+          }
+          else if (item["event.claim.status"] != "Claimed") {
+            claimStatus = "Investigating";
+            claimUser = this.$root.username;
+            claimTime = new Date().toISOString();
+            claimTimeInv = claimTime;
+          }
+        }
+        else {
+          if (item["event.claim.status"] == "Claimed" && this.cycling) {
+            claimStatus = "Investigating";
+            claimUser = this.$root.username;
+            claimTime = "UNCHANGED";
+            claimTimeInv = new Date().toISOString();
+          }
+          else if (item["event.claim.status"] != "Investigating" && item["event.claim.status"] != "Claimed") {
+            claimStatus = "Claimed";
+            claimUser = this.$root.username;
+            claimTime = new Date().toISOString();
+          }          
+        }
+        const response = await this.$root.papi.post('events/claim', {
+          searchFilter: await this.getQuery(),
+          eventFilter: docEvent,
+          dateRange: this.dateRange, 
+          dateRangeFormat: this.i18n.timePickerSample, 
+          timezone: this.zone, 
+          claimStatus: claimStatus,
+          claimUser: claimUser,
+          claimTime: claimTime,
+          claimTimeInv: claimTimeInv
+        });
+        if (response.data && response.data.errors && response.data.errors.length > 0) {
+          this.$root.showWarning(this.i18n.claimPartialSuccess);
+        }
+        else {
+          this.loadData();
+        }
+      } catch (error) {
+        this.$root.showError(error);
+      }
     }
   }
 };

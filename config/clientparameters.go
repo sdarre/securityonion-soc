@@ -112,6 +112,8 @@ type HuntingParameters struct {
 	AckEnabled                   bool                `json:"ackEnabled"`
 	EscalateEnabled              bool                `json:"escalateEnabled"`
 	EscalateRelatedEventsEnabled bool                `json:"escalateRelatedEventsEnabled"`
+	ClaimEnabled                 bool                `json:"claimEnabled"`
+	Cycling                      bool                `json:"cycling"`
 	ViewEnabled                  bool                `json:"viewEnabled"`
 	CreateLink                   string              `json:"createLink"`
 	ChartLabelMaxLength          int                 `json:"chartLabelMaxLength"`

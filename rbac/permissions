@@ -7,6 +7,7 @@ cases/write:      case-admin
 events/read:      event-monitor
 events/write:     event-admin
 events/ack:       event-admin
+events/claim:     event-admin
 jobs/read:        job-monitor
 jobs/pivot:       job-user
 jobs/write:       job-admin

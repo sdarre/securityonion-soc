@@ -811,11 +811,13 @@ func (store *ElasticEventstore) Acknowledge(ctx context.Context, ackCriteria *mo
 				"eventFilter":  ackCriteria.EventFilter,
 				"escalate":     ackCriteria.Escalate,
 				"acknowledge":  ackCriteria.Acknowledge,
+				"ackTime":      ackCriteria.AckTime,
 				"requestId":    ctx.Value(web.ContextKeyRequestId),
 			}).Info("Acknowledging event")
 
 			updateCriteria := model.NewEventUpdateCriteria()
 			updateCriteria.AddUpdateScript("ctx._source.event.acknowledged=" + strconv.FormatBool(ackCriteria.Acknowledge))
+			updateCriteria.AddUpdateScript("ctx._source.event.ackTime='" + ackCriteria.AckTime + "'")
 			if ackCriteria.Escalate && ackCriteria.Acknowledge {
 				updateCriteria.AddUpdateScript("ctx._source.event.escalated=true")
 			}
@@ -867,6 +869,80 @@ func (store *ElasticEventstore) Acknowledge(ctx context.Context, ackCriteria *mo
 		}
 	} else {
 		err = errors.New("EventFilter must be specified to ack an event")
+	}
+	return results, err
+}
+
+func (store *ElasticEventstore) Claim(ctx context.Context, claimCriteria *model.EventClaimCriteria) (*model.EventUpdateResults, error) {
+	var results *model.EventUpdateResults
+	var err error
+	if len(claimCriteria.EventFilter) > 0 {
+		if err = store.server.CheckAuthorized(ctx, "claim", "events"); err == nil {
+			log.WithFields(log.Fields{
+				"searchFilter": claimCriteria.SearchFilter,
+				"eventFilter":  claimCriteria.EventFilter,
+				"claimStatus":  claimCriteria.ClaimStatus,
+				"claimUser":    claimCriteria.ClaimUser,
+				"claimTime":    claimCriteria.ClaimTime,
+				"claimTimeInv": claimCriteria.ClaimTimeInv,
+				"requestId":    ctx.Value(web.ContextKeyRequestId),
+			}).Info("Claiming event")
+
+			updateCriteria := model.NewEventUpdateCriteria()			
+			updateCriteria.AddUpdateScript("ctx._source.event.put('claim.status', '" + claimCriteria.ClaimStatus + "')")
+			updateCriteria.AddUpdateScript("ctx._source.event.put('claim.user', '" + claimCriteria.ClaimUser + "')")
+			if claimCriteria.ClaimTime != "UNCHANGED" {
+				updateCriteria.AddUpdateScript("ctx._source.event.put('claim.time_claimed', '" + claimCriteria.ClaimTime + "')")
+			}
+			updateCriteria.AddUpdateScript("ctx._source.event.put('claim.time_investigating', '" + claimCriteria.ClaimTimeInv + "')")
+			updateCriteria.Populate(claimCriteria.SearchFilter,
+				claimCriteria.DateRange,
+				claimCriteria.DateRangeFormat,
+				claimCriteria.Timezone,
+				"0",
+				"0")
+
+			// Add the event filters to the search query
+			var searchSegment *model.SearchSegment
+			segment := updateCriteria.ParsedQuery.NamedSegment("search")
+			if segment == nil {
+				searchSegment = model.NewSearchSegmentEmpty()
+			} else {
+				searchSegment = segment.(*model.SearchSegment)
+			}
+
+			updateCriteria.Asynchronous = false
+			for key, value := range claimCriteria.EventFilter {
+				if strings.ToLower(key) != "count" {
+					valueStr := fmt.Sprintf("%v", value)
+					searchSegment.AddFilter(store.mapElasticField(key), valueStr, model.IsScalar(value), true, false)
+				} else if int(value.(float64)) > store.asyncThreshold {
+					log.WithFields(log.Fields{
+						key:         value,
+						"threshold": store.asyncThreshold,
+						"requestId": ctx.Value(web.ContextKeyRequestId),
+					}).Info("Claiming events asynchronously due to large quantity")
+					updateCriteria.Asynchronous = true
+				}
+			}
+
+			// Baseline the query to be based only on the search component
+			updateCriteria.ParsedQuery = model.NewQuery()
+			updateCriteria.ParsedQuery.AddSegment(searchSegment)
+			
+			results, err = store.Update(ctx, updateCriteria)
+			if err == nil && !updateCriteria.Asynchronous {
+				if results.UpdatedCount == 0 {
+					if results.UnchangedCount == 0 {
+						err = errors.New("No eligible events available to claim")
+					} else {
+						err = errors.New("All events have already been claimed")
+					}
+				}
+			}
+		}
+	} else {
+		err = errors.New("EventFilter must be specified to claim an event")
 	}
 	return results, err
 }

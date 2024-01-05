@@ -21,4 +21,5 @@ type Eventstore interface {
 	Update(context context.Context, criteria *model.EventUpdateCriteria) (*model.EventUpdateResults, error)
 	Delete(context context.Context, index string, id string) error
 	Acknowledge(context context.Context, criteria *model.EventAckCriteria) (*model.EventUpdateResults, error)
+	Claim(context context.Context, criteria *model.EventClaimCriteria) (*model.EventUpdateResults, error)
 }

@@ -417,3 +417,11 @@ td {
 .maximized-bg {
   overflow: hidden;
 }
+
+.claimed {
+  background-color: #116655 !important;
+}
+
+.investigating {
+  background-color: #31629B !important;
+}
